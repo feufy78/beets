@@ -12,8 +12,11 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
+#
+# MODIFIED TO WORK WITH HEADPHONES!!
+#
+
 __version__ = '1.0b14'
 __author__ = 'Adrian Sampson <adrian@radbox.org>'
 
-import beets.library
-Library = beets.library.Library
+from lib.beets.library import Library

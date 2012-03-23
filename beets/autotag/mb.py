@@ -15,15 +15,15 @@
 """Searches for albums in the MusicBrainz database.
 """
 import logging
-import musicbrainzngs
+import lib.musicbrainzngs as musicbrainzngs
 
-import beets.autotag.hooks
-import beets
+import lib.beets.autotag.hooks
+import lib.beets
 
 SEARCH_LIMIT = 5
 VARIOUS_ARTISTS_ID = '89ad4ac3-39f7-470e-963a-56509c546377'
 
-musicbrainzngs.set_useragent('beets', beets.__version__,
+musicbrainzngs.set_useragent('beets', lib.beets.__version__,
                              'http://beets.radbox.org/')
 
 class ServerBusyError(Exception): pass
@@ -50,7 +50,7 @@ def track_info(recording, medium=None, medium_index=None):
     ``TrackInfo`` object. ``medium_index``, if provided, is the track's
     index (1-based) on its medium.
     """
-    info = beets.autotag.hooks.TrackInfo(recording['title'],
+    info = lib.beets.autotag.hooks.TrackInfo(recording['title'],
                                          recording['id'],
                                          medium=medium,
                                          medium_index=medium_index)
@@ -104,7 +104,7 @@ def album_info(release):
                 # title.
                 ti.title = track['title']
             track_infos.append(ti)
-    info = beets.autotag.hooks.AlbumInfo(
+    info = lib.beets.autotag.hooks.AlbumInfo(
         release['title'],
         release['id'],
         artist_name,

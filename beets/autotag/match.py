@@ -17,12 +17,12 @@ releases and tracks.
 """
 import logging
 import re
-from munkres import Munkres
-from unidecode import unidecode
+from lib.munkres import Munkres
+#from unidecode import unidecode
 
-from beets import plugins
-from beets.util import levenshtein, plurality
-from beets.autotag import hooks
+from lib.beets import plugins
+from lib.beets.util import levenshtein, plurality
+from lib.beets.autotag import hooks
 
 # Distance parameters.
 # Text distance weights: proportions on the normalized intuitive edit
@@ -97,8 +97,8 @@ def _string_dist_basic(str1, str2):
     transliteration/lowering to ASCII characters. Normalized by string
     length.
     """
-    str1 = unidecode(str1)
-    str2 = unidecode(str2)
+    #str1 = unidecode(str1)
+    #str2 = unidecode(str2)
     str1 = re.sub(r'[^a-z0-9]', '', str1.lower())
     str2 = re.sub(r'[^a-z0-9]', '', str2.lower())
     if not str1 and not str2:

@@ -23,15 +23,15 @@ import time
 import itertools
 import re
 
-from beets import ui
-from beets.ui import print_, decargs
-from beets import autotag
-import beets.autotag.art
-from beets import plugins
-from beets import importer
-from beets.util import syspath, normpath, ancestry, displayable_path
-from beets.util.functemplate import Template
-from beets import library
+from lib.beets import ui
+from lib.beets.ui import print_, decargs
+from lib.beets import autotag
+import lib.beets.autotag.art
+from lib.beets import plugins
+from lib.beets import importer
+from lib.beets.util import syspath, normpath, ancestry, displayable_path
+from lib.beets.util.functemplate import Template
+from lib.beets import library
 
 # Global logger.
 log = logging.getLogger('beets')
@@ -1007,7 +1007,7 @@ default_commands.append(stats_cmd)
 # version: Show current beets version.
 
 def show_version(lib, config, opts, args):
-    print 'beets version %s' % beets.__version__
+    print 'beets version %s' % lib.beets.__version__
     # Show plugins.
     names = []
     for plugin in plugins.find_plugins():

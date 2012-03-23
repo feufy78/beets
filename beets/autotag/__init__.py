@@ -18,8 +18,8 @@ import os
 import logging
 import re
 
-from beets import library, mediafile
-from beets.util import sorted_walk, ancestry
+from lib.beets import library, mediafile
+from lib.beets.util import sorted_walk, ancestry
 
 # Parts of external interface.
 from .hooks import AlbumInfo, TrackInfo

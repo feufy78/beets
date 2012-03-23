@@ -28,12 +28,12 @@ A field will always return a reasonable value of the correct type, even
 if no tag is present. If no value is available, the value will be false
 (e.g., zero or the empty string).
 """
-import mutagen
-import mutagen.mp3
-import mutagen.oggvorbis
-import mutagen.mp4
-import mutagen.flac
-import mutagen.monkeysaudio
+import lib.mutagen
+import lib.mutagen.mp3
+import lib.mutagen.oggvorbis
+import lib.mutagen.mp4
+import lib.mutagen.flac
+import lib.mutagen.monkeysaudio
 import datetime
 import re
 import base64
@@ -41,7 +41,7 @@ import imghdr
 import os
 import logging
 import traceback
-from beets.util.enumeration import enum
+from lib.beets.util.enumeration import enum
 
 __all__ = ['UnreadableFileError', 'FileTypeError', 'MediaFile']
 
@@ -354,7 +354,7 @@ class MediaField(object):
                 # need to make a new frame?
                 if not found:
                     assert isinstance(style.id3_frame_field, str) # Keyword.
-                    frame = mutagen.id3.Frames[style.key](
+                    frame = lib.mutagen.id3.Frames[style.key](
                         encoding=3,
                         desc=style.id3_desc,
                         **{style.id3_frame_field: val}
@@ -373,14 +373,14 @@ class MediaField(object):
                 else:
                     # New frame.
                     assert isinstance(style.id3_frame_field, str) # Keyword.
-                    frame = mutagen.id3.UFID(owner=owner, 
+                    frame = lib.mutagen.id3.UFID(owner=owner, 
                         **{style.id3_frame_field: val})
                     obj.mgfile.tags.setall('UFID', [frame])
                     
             # Just replace based on key.
             else:
                 assert isinstance(style.id3_frame_field, str) # Keyword.
-                frame = mutagen.id3.Frames[style.key](encoding = 3,
+                frame = lib.mutagen.id3.Frames[style.key](encoding = 3,
                     **{style.id3_frame_field: val})
                 obj.mgfile.tags.setall(style.key, [frame])
         
@@ -545,9 +545,9 @@ class ImageField(object):
         """
         kind = imghdr.what(None, h=data)
         if kind == 'png':
-            return mutagen.mp4.MP4Cover.FORMAT_PNG
+            return lib.mutagen.mp4.MP4Cover.FORMAT_PNG
         else:
-            return mutagen.mp4.MP4Cover.FORMAT_JPEG
+            return lib.mutagen.mp4.MP4Cover.FORMAT_JPEG
 
     def __get__(self, obj, owner):
         if obj.type == 'mp3':
@@ -586,7 +586,7 @@ class ImageField(object):
 
             for data in obj.mgfile["metadata_block_picture"]:
                 try:
-                    pic = mutagen.flac.Picture(base64.b64decode(data))
+                    pic = lib.mutagen.flac.Picture(base64.b64decode(data))
                     break
                 except TypeError:
                     pass
@@ -607,7 +607,7 @@ class ImageField(object):
                 # If we're clearing the image, we're done.
                 return
 
-            picframe = mutagen.id3.APIC(
+            picframe = lib.mutagen.id3.APIC(
                 encoding = 3,
                 mime = self._mime(val),
                 type = 3, # front cover
@@ -621,7 +621,7 @@ class ImageField(object):
                 if 'covr' in obj.mgfile:
                     del obj.mgfile['covr']
             else:
-                cover = mutagen.mp4.MP4Cover(val, self._mp4kind(val))
+                cover = lib.mutagen.mp4.MP4Cover(val, self._mp4kind(val))
                 obj.mgfile['covr'] = [cover]
 
         else:
@@ -638,7 +638,7 @@ class ImageField(object):
 
             # Add new art if provided.
             if val is not None:
-                pic = mutagen.flac.Picture()
+                pic = lib.mutagen.flac.Picture()
                 pic.data = val
                 pic.mime = self._mime(val)
                 obj.mgfile['metadata_block_picture'] = [
@@ -684,14 +684,14 @@ class MediaFile(object):
         self.path = path
         
         unreadable_exc = (
-            mutagen.mp3.HeaderNotFoundError,
-            mutagen.flac.FLACNoHeaderError,
-            mutagen.monkeysaudio.MonkeysAudioHeaderError,
-            mutagen.mp4.MP4StreamInfoError,
-            mutagen.oggvorbis.OggVorbisHeaderError,
+            lib.mutagen.mp3.HeaderNotFoundError,
+            lib.mutagen.flac.FLACNoHeaderError,
+            lib.mutagen.monkeysaudio.MonkeysAudioHeaderError,
+            lib.mutagen.mp4.MP4StreamInfoError,
+            lib.mutagen.oggvorbis.OggVorbisHeaderError,
         )
         try:
-            self.mgfile = mutagen.File(path)
+            self.mgfile = lib.mutagen.File(path)
         except unreadable_exc:
             log.warn('header parsing failed')
             raise UnreadableFileError('Mutagen could not read file')
@@ -973,12 +973,12 @@ class MediaFile(object):
     @property
     def channels(self):
         """The number of channels in the audio (an int)."""
-        if isinstance(self.mgfile.info, mutagen.mp3.MPEGInfo):
+        if isinstance(self.mgfile.info, lib.mutagen.mp3.MPEGInfo):
             return {
-                mutagen.mp3.STEREO: 2,
-                mutagen.mp3.JOINTSTEREO: 2,
-                mutagen.mp3.DUALCHANNEL: 2,
-                mutagen.mp3.MONO: 1,
+                lib.mutagen.mp3.STEREO: 2,
+                lib.mutagen.mp3.JOINTSTEREO: 2,
+                lib.mutagen.mp3.DUALCHANNEL: 2,
+                lib.mutagen.mp3.MONO: 1,
             }[self.mgfile.info.mode]
         if hasattr(self.mgfile.info, 'channels'):
             return self.mgfile.info.channels

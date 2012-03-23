@@ -18,12 +18,12 @@ import re
 import sys
 import logging
 import shlex
-from unidecode import unidecode
-from beets.mediafile import MediaFile
-from beets import plugins
-from beets import util
-from beets.util import bytestring_path, syspath, normpath, samefile
-from beets.util.functemplate import Template
+#from unidecode import unidecode
+from lib.beets.mediafile import MediaFile
+from lib.beets import plugins
+from lib.beets import util
+from lib.beets.util import bytestring_path, syspath, normpath, samefile
+from lib.beets.util.functemplate import Template
 
 MAX_FILENAME_LENGTH = 200
 
@@ -1381,7 +1381,8 @@ class DefaultTemplateFunctions(object):
     def tmpl_asciify(s):
         """Translate non-ASCII characters to their ASCII equivalents.
         """
-        return unidecode(s)
+        #return unidecode(s)
+        return s
 
     def tmpl_unique(self, keys, disam):
         """Generate a string that is guaranteed to be unique among all

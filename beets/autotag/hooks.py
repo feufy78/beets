@@ -14,8 +14,8 @@
 
 """Glue between metadata sources and the matching logic."""
 
-from beets import plugins
-from beets.autotag import mb
+from lib.beets import plugins
+from lib.beets.autotag import mb
 
 # Classes used to represent candidate options.
 

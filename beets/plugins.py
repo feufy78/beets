@@ -19,7 +19,7 @@ import itertools
 import traceback
 from collections import defaultdict
 
-from beets import mediafile
+from lib.beets import mediafile
 
 PLUGIN_NAMESPACE = 'beetsplug'
 DEFAULT_PLUGINS = []

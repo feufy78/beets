@@ -28,9 +28,9 @@ import sqlite3
 import errno
 import re
 
-from beets import library
-from beets import plugins
-from beets import util
+from lib.beets import library
+from lib.beets import plugins
+from lib.beets import util
 
 if sys.platform == 'win32':
     import colorama
@@ -638,7 +638,7 @@ class SubcommandsOptionParser(optparse.OptionParser):
 def main(args=None, configfh=None):
     """Run the main command-line interface for beets."""
     # Get the default subcommands.
-    from beets.ui.commands import default_commands
+    from lib.beets.ui.commands import default_commands
 
     # Get default file paths.
     default_config, default_libpath, default_dir = default_paths()
