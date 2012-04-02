@@ -18,12 +18,13 @@ import re
 import sys
 import logging
 import shlex
+import unicodedata
 #from unidecode import unidecode
-from lib.beets.mediafile import MediaFile
-from lib.beets import plugins
-from lib.beets import util
-from lib.beets.util import bytestring_path, syspath, normpath, samefile
-from lib.beets.util.functemplate import Template
+from beets.mediafile import MediaFile
+from beets import plugins
+from beets import util
+from beets.util import bytestring_path, syspath, normpath, samefile
+from beets.util.functemplate import Template
 
 MAX_FILENAME_LENGTH = 200
 
@@ -40,30 +41,34 @@ ITEM_FIELDS = [
     ('path',        'blob', False, False),
     ('album_id',    'int',  False, False),
 
-    ('title',            'text', True, True),
-    ('artist',           'text', True, True),
-    ('album',            'text', True, True),
-    ('albumartist',      'text', True, True),
-    ('genre',            'text', True, True),
-    ('composer',         'text', True, True),
-    ('grouping',         'text', True, True),
-    ('year',             'int',  True, True),
-    ('month',            'int',  True, True),
-    ('day',              'int',  True, True),
-    ('track',            'int',  True, True),
-    ('tracktotal',       'int',  True, True),
-    ('disc',             'int',  True, True),
-    ('disctotal',        'int',  True, True),
-    ('lyrics',           'text', True, True),
-    ('comments',         'text', True, True),
-    ('bpm',              'int',  True, True),
-    ('comp',             'bool', True, True),
-    ('mb_trackid',       'text', True, True),
-    ('mb_albumid',       'text', True, True),
-    ('mb_artistid',      'text', True, True),
-    ('mb_albumartistid', 'text', True, True),
-    ('albumtype',        'text', True, True),
-    ('label',            'text', True, True),
+    ('title',                'text', True, True),
+    ('artist',               'text', True, True),
+    ('artist_sort',          'text', True, True),
+    ('album',                'text', True, True),
+    ('albumartist',          'text', True, True),
+    ('albumartist_sort',     'text', True, True),
+    ('genre',                'text', True, True),
+    ('composer',             'text', True, True),
+    ('grouping',             'text', True, True),
+    ('year',                 'int',  True, True),
+    ('month',                'int',  True, True),
+    ('day',                  'int',  True, True),
+    ('track',                'int',  True, True),
+    ('tracktotal',           'int',  True, True),
+    ('disc',                 'int',  True, True),
+    ('disctotal',            'int',  True, True),
+    ('lyrics',               'text', True, True),
+    ('comments',             'text', True, True),
+    ('bpm',                  'int',  True, True),
+    ('comp',                 'bool', True, True),
+    ('mb_trackid',           'text', True, True),
+    ('mb_albumid',           'text', True, True),
+    ('mb_artistid',          'text', True, True),
+    ('mb_albumartistid',     'text', True, True),
+    ('albumtype',            'text', True, True),
+    ('label',                'text', True, True),
+    ('acoustid_fingerprint', 'text', True, True),
+    ('acoustid_id',          'text', True, True),
 
     ('length',      'real', False, True),
     ('bitrate',     'int',  False, True),
@@ -85,6 +90,7 @@ ALBUM_FIELDS = [
     ('artpath', 'blob',                False),
 
     ('albumartist',      'text', True),
+    ('albumartist_sort', 'text', True),
     ('album',            'text', True),
     ('genre',            'text', True),
     ('year',             'int',  True),
@@ -114,6 +120,15 @@ PF_KEY_DEFAULT = 'default'
 log = logging.getLogger('beets')
 if not log.handlers:
     log.addHandler(logging.StreamHandler())
+
+# A little SQL utility.
+def _orelse(exp1, exp2):
+    """Generates an SQLite expression that evaluates to exp1 if exp1 is
+    non-null and non-empty or exp2 otherwise.
+    """
+    return ('(CASE {0} WHEN NULL THEN {1} '
+                      'WHEN "" THEN {1} '
+                      'ELSE {0} END)').format(exp1, exp2)
 
 
 # Exceptions.
@@ -794,7 +809,7 @@ class Library(BaseLibrary):
         self.conn.commit()
 
     def destination(self, item, pathmod=None, in_album=False,
-                    fragment=False, basedir=None):
+                    fragment=False, basedir=None, platform=None):
         """Returns the path in the library directory designated for item
         item (i.e., where the file ought to be). in_album forces the
         item to be treated as part of an album. fragment makes this
@@ -804,6 +819,7 @@ class Library(BaseLibrary):
         directory for the destination.
         """
         pathmod = pathmod or os.path
+        platform = platform or sys.platform
 
         # Use a path format based on a query, falling back on the
         # default.
@@ -865,6 +881,10 @@ class Library(BaseLibrary):
         subpath = subpath_tmpl.substitute(mapping, funcs)
 
         # Encode for the filesystem, dropping unencodable characters.
+        if platform == 'darwin':
+            subpath = unicodedata.normalize('NFD', subpath)
+        else:
+            subpath = unicodedata.normalize('NFC', subpath)
         if isinstance(subpath, unicode) and not fragment:
             encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
             subpath = subpath.encode(encoding, 'replace')
@@ -1039,7 +1059,8 @@ class Library(BaseLibrary):
         where, subvals = query.clause()
         sql = "SELECT * FROM albums " + \
               "WHERE " + where + \
-              " ORDER BY albumartist, album"
+              " ORDER BY %s, album" % \
+                _orelse("albumartist_sort", "albumartist")
         c = self.conn.execute(sql, subvals)
         return [Album(self, dict(res)) for res in c.fetchall()]
 
@@ -1056,7 +1077,8 @@ class Library(BaseLibrary):
 
         sql = "SELECT * FROM items " + \
               "WHERE " + where + \
-              " ORDER BY artist, album, disc, track"
+              " ORDER BY %s, album, disc, track" % \
+                _orelse("artist_sort", "artist")
         log.debug('Getting items with SQL: %s' % sql)
         c = self.conn.execute(sql, subvals)
         return ResultIterator(c)

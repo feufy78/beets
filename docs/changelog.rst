@@ -10,10 +10,30 @@ Changelog
   choices: skip the new music (the previous behavior), keep both, or remove the
   old music. See the :ref:`guide-duplicates` section in the autotagging guide
   for details.
+* Artist **sort names** are now fetched from MusicBrainz. There are two new data
+  fields, ``artist_sort`` and ``albumartist_sort``, that contain sortable artist
+  names like "Beatles, The". These fields are also used to sort albums and items
+  when using the ``list`` command. Thanks to Paul Provost.
+* :doc:`/plugins/chroma`: A new command, ``beet submit``, will **submit
+  fingerprints** to the Acoustid database. Submitting your library helps
+  increase the coverage and accuracy of Acoustid fingerprinting. The Chromaprint
+  fingerprint and Acoustid ID are also now stored for all fingerprinted tracks.
+  This version of beets *requires* at least version 0.6 of `pyacoustid`_ for
+  fingerprinting to work.
+* New :doc:`/plugins/rdm`: Randomly select albums and tracks from your library.
+  Thanks to Philippe Mongeau.
+* The :doc:`/plugins/mbcollection` by Jeffrey Aylesworth was added to the core
+  beets distribution.
 * New :doc:`/plugins/m3uupdate`: Catalog imported files in an ``m3u`` playlist
   file for easy importing to other systems. Thanks to Fabrice Laporte.
+* When the autotagger fails to find a match, it now displays the number of
+  tracks on the album (to help you guess what might be going wrong).
 * :doc:`/plugins/bpd`: Use Gstreamer's ``playbin2`` element instead of the
   deprecated ``playbin``.
+* Filenames are normalized with Unicode Normal Form D (NFD) on Mac OS X and NFC
+  on all other platforms.
+
+.. _pyacoustid: https://github.com/sampsyo/pyacoustid
 
 
 1.0b13 (March 16, 2012)

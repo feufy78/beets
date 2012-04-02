@@ -128,6 +128,13 @@ def apply_metadata(items, album_info):
         item.albumartist = album_info.artist
         item.album = album_info.album
         item.tracktotal = len(items)
+
+        # Artist sort names.
+        if track_info.artist_sort:
+            item.artist_sort = track_info.artist_sort
+        else:
+            item.artist_sort = album_info.artist_sort
+        item.albumartist_sort = album_info.artist_sort
         
         # Release date.
         if album_info.year:

@@ -55,14 +55,15 @@ def track_info(recording, medium=None, medium_index=None):
                                          medium=medium,
                                          medium_index=medium_index)
 
-    # Get the name of the track artist.
+    # Get the track artist credit.
     if recording.get('artist-credit-phrase'):
         info.artist = recording['artist-credit-phrase']
 
-    # Get the ID of the first artist.
+    # Get the ID and sort name of the first artist.
     if 'artist-credit' in recording:
         artist = recording['artist-credit'][0]['artist']
         info.artist_id = artist['id']
+        info.artist_sort = artist['sort-name']
 
     if recording.get('length'):
         info.length = int(recording['length'])/(1000.0)
@@ -111,6 +112,7 @@ def album_info(release):
         release['artist-credit'][0]['artist']['id'],
         track_infos,
         mediums=len(release['medium-list']),
+        artist_sort=release['artist-credit'][0]['artist']['sort-name'],
     )
     info.va = info.artist_id == VARIOUS_ARTISTS_ID
     if 'asin' in release:

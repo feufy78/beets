@@ -743,7 +743,7 @@ class MediaFile(object):
                 mp3 = StorageStyle('TPE1'),
                 mp4 = StorageStyle("\xa9ART"), 
                 etc = StorageStyle('artist'),
-            )     
+            )
     album = MediaField(
                 mp3 = StorageStyle('TALB'),
                 mp4 = StorageStyle("\xa9alb"), 
@@ -885,6 +885,16 @@ class MediaFile(object):
                 etc = [StorageStyle('label'),
                        StorageStyle('publisher')] # Traktor
             )
+    artist_sort = MediaField(
+                mp3 = StorageStyle('TSOP'),
+                mp4 = StorageStyle("soar"),
+                etc = StorageStyle('ARTISTSORT'),
+            )
+    albumartist_sort = MediaField(
+                mp3 = StorageStyle('TXXX', id3_desc=u'ALBUMARTISTSORT'),
+                mp4 = StorageStyle("soaa"),
+                etc = StorageStyle('ALBUMARTISTSORT'),
+            )
 
     # Album art.
     art = ImageField()
@@ -920,6 +930,24 @@ class MediaFile(object):
                     '----:com.apple.iTunes:MusicBrainz Album Artist Id',
                     as_type=str),
                 etc = StorageStyle('musicbrainz_albumartistid')
+            )
+
+    # Acoustid fields.
+    acoustid_fingerprint = MediaField(
+                mp3 = StorageStyle('TXXX',
+                                   id3_desc=u'Acoustid Fingerprint'),
+                mp4 = StorageStyle(
+                    '----:com.apple.iTunes:Acoustid Fingerprint',
+                    as_type=str),
+                etc = StorageStyle('ACOUSTID_FINGERPRINT')
+            )
+    acoustid_id = MediaField(
+                mp3 = StorageStyle('TXXX',
+                                   id3_desc=u'Acoustid Id'),
+                mp4 = StorageStyle(
+                    '----:com.apple.iTunes:Acoustid Id',
+                    as_type=str),
+                etc = StorageStyle('ACOUSTID_ID')
             )
 
     # ReplayGain fields.
