@@ -1,5 +1,5 @@
 # This file is part of beets.
-# Copyright 2011, Adrian Sampson.
+# Copyright 2012, Adrian Sampson.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -8,14 +8,13 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
 """Adds Chromaprint/Acoustid acoustic fingerprinting support to the
 autotagger. Requires the pyacoustid library.
 """
-from __future__ import with_statement
 from beets import plugins
 from beets import ui
 from beets import util
@@ -27,13 +26,13 @@ from collections import defaultdict
 API_KEY = '1vOwZtEn'
 SCORE_THRESH = 0.5
 TRACK_ID_WEIGHT = 10.0
-COMMON_REL_THRESH = 0.6 # How many tracks must have an album in common?
+COMMON_REL_THRESH = 0.6  # How many tracks must have an album in common?
 
 log = logging.getLogger('beets')
 
 # Stores the Acoustid match information for each track. This is
 # populated when an import task begins and then used when searching for
-# candidates. It maps audio file paths to (recording_id, release_ids)
+# candidates. It maps audio file paths to (recording_ids, release_ids)
 # pairs. If a given path is not present in the mapping, then no match
 # was found.
 _matches = {}
@@ -54,7 +53,7 @@ def acoustid_match(path):
     """
     try:
         duration, fp = acoustid.fingerprint_file(path)
-    except acoustid.FingerprintGenerationError, exc:
+    except acoustid.FingerprintGenerationError as exc:
         log.error('fingerprinting of %s failed: %s' %
                   (repr(path), str(exc)))
         return None
@@ -62,35 +61,35 @@ def acoustid_match(path):
     try:
         res = acoustid.lookup(API_KEY, fp, duration,
                               meta='recordings releases')
-    except acoustid.AcoustidError, exc:
-        log.debug('fingerprint matching %s failed: %s' % 
+    except acoustid.AcoustidError as exc:
+        log.debug('fingerprint matching %s failed: %s' %
                   (repr(path), str(exc)))
         return None
     log.debug('chroma: fingerprinted %s' % repr(path))
-    
+
     # Ensure the response is usable and parse it.
     if res['status'] != 'ok' or not res.get('results'):
         log.debug('chroma: no match found')
         return None
-    result = res['results'][0]
+    result = res['results'][0]  # Best match.
     if result['score'] < SCORE_THRESH:
         log.debug('chroma: no results above threshold')
         return None
     _acoustids[path] = result['id']
 
-    # Get recordings from the result.
+    # Get recording and releases from the result.
     if not result.get('recordings'):
         log.debug('chroma: no recordings found')
         return None
-    recording = result['recordings'][0]
-    recording_id = recording['id']
-    if 'releases' in recording:
-        release_ids = [rel['id'] for rel in recording['releases']]
-    else:
-        release_ids = []
+    recording_ids = []
+    release_ids = []
+    for recording in result['recordings']:
+        recording_ids.append(recording['id'])
+        if 'releases' in recording:
+            release_ids += [rel['id'] for rel in recording['releases']]
 
-    log.debug('chroma: matched recording {}'.format(recording_id))
-    _matches[path] = recording_id, release_ids
+    log.debug('chroma: matched recordings {0}'.format(recording_ids))
+    _matches[path] = recording_ids, release_ids
 
 
 # Plugin structure and autotagging logic.
@@ -119,8 +118,8 @@ class AcoustidPlugin(plugins.BeetsPlugin):
             # Match failed.
             return 0.0, 0.0
 
-        recording_id, _ = _matches[item.path]
-        if info.track_id == recording_id:
+        recording_ids, _ = _matches[item.path]
+        if info.track_id in recording_ids:
             dist = 0.0
         else:
             dist = TRACK_ID_WEIGHT
@@ -138,16 +137,16 @@ class AcoustidPlugin(plugins.BeetsPlugin):
 
     def item_candidates(self, item):
         if item.path not in _matches:
-            return 0.0, 0.0
-
-        recording_id, _ = _matches[item.path]
-        track = hooks._track_for_id(recording_id)
-        if track:
-            log.debug('found acoustid item candidate')
-            return [track]
-        else:
-            log.debug('no acoustid item candidate found')
             return []
+
+        recording_ids, _ = _matches[item.path]
+        tracks = []
+        for recording_id in recording_ids:
+            track = hooks._track_for_id(recording_id)
+            if track:
+                tracks.append(track)
+        log.debug('acoustid item candidates: {0}'.format(len(tracks)))
+        return tracks
 
     def configure(self, config):
         global _userkey
@@ -171,14 +170,15 @@ def fingerprint_task(config=None, task=None):
     """Fingerprint each item in the task for later use during the
     autotagging candidate search.
     """
-    for item in task.all_items():
+    items = task.items if task.is_album else [task.item]
+    for item in items:
         acoustid_match(item.path)
 
 @AcoustidPlugin.listen('import_task_apply')
 def apply_acoustid_metadata(config=None, task=None):
     """Apply Acoustid metadata (fingerprint and ID) to the task's items.
     """
-    for item in task.all_items():
+    for item in task.imported_items():
         if item.path in _fingerprints:
             item.acoustid_fingerprint = _fingerprints[item.path]
         if item.path in _acoustids:
@@ -193,30 +193,32 @@ def submit_items(userkey, items, chunksize=64):
     data = []  # The running list of dictionaries to submit.
     def submit_chunk():
         """Submit the current accumulated fingerprint data."""
-        log.info('submitting {} fingerprints'.format(len(data)))
+        log.info('submitting {0} fingerprints'.format(len(data)))
         acoustid.submit(API_KEY, userkey, data)
         del data[:]
 
     for item in items:
         # Get a fingerprint and length for this track.
         if not item.length:
-            log.info(u'{}: no duration available'.format(
+            log.info(u'{0}: no duration available'.format(
                 util.displayable_path(item.path)
             ))
             continue
         elif item.acoustid_fingerprint:
-            log.info(u'{}: using existing fingerprint'.format(
+            log.info(u'{0}: using existing fingerprint'.format(
                 util.displayable_path(item.path)
             ))
             fp = item.acoustid_fingerprint
         else:
-            log.info(u'{}: fingerprinting'.format(
+            log.info(u'{0}: fingerprinting'.format(
                 util.displayable_path(item.path)
             ))
             try:
                 _, fp = acoustid.fingerprint_file(item.path)
-            except acoustid.FingerprintGenerationError, exc:
-                log.info('fingerprint generation failed')
+            except acoustid.FingerprintGenerationError as exc:
+                log.info(
+                    'fingerprint generation failed: {0}'.format(exc)
+                )
                 continue
 
         # Construct a submission dictionary for this item.
@@ -245,4 +247,5 @@ def submit_items(userkey, items, chunksize=64):
             submit_chunk()
 
     # Submit remaining data in a final chunk.
-    submit_chunk()
+    if data:
+        submit_chunk()

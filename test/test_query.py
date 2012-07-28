@@ -8,7 +8,7 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
@@ -27,27 +27,37 @@ some_item = _common.item()
 class QueryParseTest(unittest.TestCase):
     def test_one_basic_term(self):
         q = 'test'
-        r = (None, 'test')
+        r = (None, 'test', False)
         self.assertEqual(pqp(q), r)
-    
+
     def test_one_keyed_term(self):
         q = 'test:val'
-        r = ('test', 'val')
+        r = ('test', 'val', False)
         self.assertEqual(pqp(q), r)
 
     def test_colon_at_end(self):
         q = 'test:'
-        r = (None, 'test:')
+        r = (None, 'test:', False)
         self.assertEqual(pqp(q), r)
-    
-    def test_colon_at_start(self):
-        q = ':test'
-        r = (None, ':test')
+
+    def test_one_basic_regexp(self):
+        q = r':regexp'
+        r = (None, 'regexp', True)
         self.assertEqual(pqp(q), r)
-    
+
+    def test_keyed_regexp(self):
+        q = r'test::regexp'
+        r = ('test', 'regexp', True)
+        self.assertEqual(pqp(q), r)
+
     def test_escaped_colon(self):
         q = r'test\:val'
-        r = (None, 'test:val')
+        r = (None, 'test:val', False)
+        self.assertEqual(pqp(q), r)
+
+    def test_escaped_colon_in_regexp(self):
+        q = r':test\:regexp'
+        r = (None, 'test:regexp', True)
         self.assertEqual(pqp(q), r)
 
 class AnySubstringQueryTest(unittest.TestCase):
@@ -62,11 +72,31 @@ class AnySubstringQueryTest(unittest.TestCase):
     def test_restriction_completeness(self):
         q = beets.library.AnySubstringQuery('title', ['title'])
         self.assertEqual(self.lib.items(q).next().title, 'the title')
-        
+
     def test_restriction_soundness(self):
         q = beets.library.AnySubstringQuery('title', ['artist'])
         self.assertRaises(StopIteration, self.lib.items(q).next)
 
+class AnyRegexpQueryTest(unittest.TestCase):
+    def setUp(self):
+        self.lib = beets.library.Library(':memory:')
+        self.lib.add(some_item)
+
+    def test_no_restriction(self):
+        q = beets.library.AnyRegexpQuery(r'^the ti')
+        self.assertEqual(self.lib.items(q).next().title, 'the title')
+
+    def test_restriction_completeness(self):
+        q = beets.library.AnyRegexpQuery(r'^the ti', ['title'])
+        self.assertEqual(self.lib.items(q).next().title, 'the title')
+
+    def test_restriction_soundness(self):
+        q = beets.library.AnyRegexpQuery(r'^the ti', ['artist'])
+        self.assertRaises(StopIteration, self.lib.items(q).next)
+
+    def test_restriction_soundness_2(self):
+        q = beets.library.AnyRegexpQuery(r'the ti$', ['title'])
+        self.assertRaises(StopIteration, self.lib.items(q).next)
 
 # Convenient asserts for matching items.
 class AssertsMixin(object):
@@ -80,7 +110,7 @@ class AssertsMixin(object):
         self.assert_matched(result_iterator, 'Lovers Who Uncover')
         self.assert_matched(result_iterator, 'Boracay')
         self.assert_done(result_iterator)
-    
+
 class GetTest(unittest.TestCase, AssertsMixin):
     def setUp(self):
         self.lib = beets.library.Library(
@@ -91,52 +121,73 @@ class GetTest(unittest.TestCase, AssertsMixin):
         q = ''
         results = self.lib.items(q)
         self.assert_matched_all(results)
-    
+
     def test_get_none(self):
         q = None
         results = self.lib.items(q)
         self.assert_matched_all(results)
-    
+
     def test_get_one_keyed_term(self):
         q = 'artist:Lil'
         results = self.lib.items(q)
         self.assert_matched(results, 'Littlest Things')
         self.assert_done(results)
-    
+
+    def test_get_one_keyed_regexp(self):
+        q = r'artist::L.+y'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Littlest Things')
+        self.assert_done(results)
+
     def test_get_one_unkeyed_term(self):
         q = 'Terry'
         results = self.lib.items(q)
         self.assert_matched(results, 'Boracay')
         self.assert_done(results)
-    
+
+    def test_get_one_unkeyed_regexp(self):
+        q = r':y$'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Boracay')
+        self.assert_done(results)
+
     def test_get_no_matches(self):
         q = 'popebear'
         results = self.lib.items(q)
         self.assert_done(results)
-    
+
     def test_invalid_key(self):
         q = 'pope:bear'
         results = self.lib.items(q)
         self.assert_matched_all(results)
-    
+
     def test_term_case_insensitive(self):
         q = 'UNCoVER'
         results = self.lib.items(q)
         self.assert_matched(results, 'Lovers Who Uncover')
         self.assert_done(results)
-    
+
+    def test_regexp_case_sensitive(self):
+        q = r':UNCoVER'
+        results = self.lib.items(q)
+        self.assert_done(results)
+        q = r':Uncover'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Lovers Who Uncover')
+        self.assert_done(results)
+
     def test_term_case_insensitive_with_key(self):
         q = 'album:stiLL'
         results = self.lib.items(q)
         self.assert_matched(results, 'Littlest Things')
         self.assert_done(results)
-    
+
     def test_key_case_insensitive(self):
         q = 'ArTiST:Allen'
         results = self.lib.items(q)
         self.assert_matched(results, 'Littlest Things')
         self.assert_done(results)
-    
+
     def test_unkeyed_term_matches_multiple_columns(self):
         q = 'little'
         results = self.lib.items(q)
@@ -144,19 +195,46 @@ class GetTest(unittest.TestCase, AssertsMixin):
         self.assert_matched(results, 'Lovers Who Uncover')
         self.assert_matched(results, 'Boracay')
         self.assert_done(results)
-    
+
+    def test_unkeyed_regexp_matches_multiple_columns(self):
+        q = r':^T'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Take Pills')
+        self.assert_matched(results, 'Lovers Who Uncover')
+        self.assert_matched(results, 'Boracay')
+        self.assert_done(results)
+
     def test_keyed_term_matches_only_one_column(self):
         q = 'artist:little'
         results = self.lib.items(q)
         self.assert_matched(results, 'Lovers Who Uncover')
         self.assert_matched(results, 'Boracay')
         self.assert_done(results)
-    
-    def test_mulitple_terms_narrow_search(self):
+
+    def test_keyed_regexp_matches_only_one_column(self):
+        q = r'album::\sS'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Littlest Things')
+        self.assert_matched(results, 'Lovers Who Uncover')
+        self.assert_done(results)
+
+    def test_multiple_terms_narrow_search(self):
         q = 'little ones'
         results = self.lib.items(q)
         self.assert_matched(results, 'Lovers Who Uncover')
         self.assert_matched(results, 'Boracay')
+        self.assert_done(results)
+
+    def test_multiple_regexps_narrow_search(self):
+        q = r':\sS :^T'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Lovers Who Uncover')
+        self.assert_done(results)
+
+    def test_mixed_terms_regexps_narrow_search(self):
+        q = r':\sS lily'
+        results = self.lib.items(q)
+        self.assert_matched(results, 'Littlest Things')
         self.assert_done(results)
 
 class MemoryGetTest(unittest.TestCase, AssertsMixin):
@@ -218,7 +296,6 @@ class MemoryGetTest(unittest.TestCase, AssertsMixin):
     def test_unicode_query(self):
         self.single_item.title = u'caf\xe9'
         self.lib.store(self.single_item)
-        self.lib.save()
 
         q = u'title:caf\xe9'
         results = self.lib.items(q)
@@ -256,7 +333,7 @@ class PathQueryTest(unittest.TestCase, AssertsMixin):
         q = 'path:/xyzzy/'
         results = self.lib.items(q)
         self.assert_done(results)
-    
+
     def test_fragment_no_match(self):
         q = 'path:/b/'
         results = self.lib.items(q)
@@ -313,7 +390,7 @@ class BrowseTest(unittest.TestCase, AssertsMixin):
     def test_albums_matches_albumartist(self):
         albums = list(self.lib.albums('panda'))
         self.assertEqual(len(albums), 1)
-        
+
     def test_items_matches_title(self):
         items = self.lib.items('boracay')
         self.assert_matched(items, 'Boracay')
@@ -324,7 +401,7 @@ class BrowseTest(unittest.TestCase, AssertsMixin):
         self.assert_done(items)
 
     #FIXME Haven't tested explicit (non-query) criteria.
-        
+
 class CountTest(unittest.TestCase):
     def setUp(self):
         self.lib = beets.library.Library(':memory:')
@@ -332,16 +409,27 @@ class CountTest(unittest.TestCase):
         self.lib.add(self.item)
 
     def test_count_gets_single_item(self):
-        songs, totaltime = beets.library.TrueQuery().count(self.lib)
+        with self.lib.transaction() as tx:
+            songs, totaltime = beets.library.TrueQuery().count(tx)
         self.assertEqual(songs, 1)
         self.assertEqual(totaltime, self.item.length)
 
     def test_count_works_for_empty_library(self):
         self.lib.remove(self.item)
-        songs, totaltime = beets.library.TrueQuery().count(self.lib)
+        with self.lib.transaction() as tx:
+            songs, totaltime = beets.library.TrueQuery().count(tx)
         self.assertEqual(songs, 0)
         self.assertEqual(totaltime, 0.0)
-        
+
+class StringParseTest(unittest.TestCase):
+    def test_single_field_query(self):
+        q = beets.library.AndQuery.from_string(u'albumtype:soundtrack')
+        self.assertEqual(len(q.subqueries), 1)
+        subq = q.subqueries[0]
+        self.assertTrue(isinstance(subq, beets.library.SubstringQuery))
+        self.assertEqual(subq.field, 'albumtype')
+        self.assertEqual(subq.pattern, 'soundtrack')
+
 def suite():
     return unittest.TestLoader().loadTestsFromName(__name__)
 

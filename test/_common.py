@@ -8,7 +8,7 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
@@ -82,8 +82,8 @@ def iconfig(lib, **kwargs):
         quiet = True,
         quiet_fallback = importer.action.SKIP,
         copy = True,
+        move = False,
         write = False,
-        art = False,
         delete = False,
         choose_match_func = lambda x, y: importer.action.SKIP,
         should_resume_func = lambda _: False,
@@ -96,6 +96,7 @@ def iconfig(lib, **kwargs):
         incremental = False,
         ignore = [],
         resolve_duplicate_func = lambda x, y: None,
+        per_disc_numbering = False,
     )
     for k, v in kwargs.items():
         setattr(config, k, v)
@@ -112,7 +113,7 @@ class Timecop(object):
 
     def time(self):
         return self.now
-    
+
     def sleep(self, amount):
         self.now += amount
 
@@ -178,7 +179,7 @@ class DummyIO(object):
         res = self.stdout.get()
         self.stdout.clear()
         return res
-    
+
     def readcount(self):
         return self.stdin.reads
 
@@ -206,3 +207,14 @@ class ExtraAsserts(object):
 
 def touch(path):
     open(path, 'a').close()
+
+class Bag(object):
+    """An object that exposes a set of fields given as keyword
+    arguments. Any field not found in the dictionary appears to be None.
+    Used for mocking Album objects and the like.
+    """
+    def __init__(self, **fields):
+        self.fields = fields
+
+    def __getattr__(self, key):
+        return self.fields.get(key)

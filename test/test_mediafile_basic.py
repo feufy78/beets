@@ -1,5 +1,5 @@
 # This file is part of beets.
-# Copyright 2011, Adrian Sampson.
+# Copyright 2012, Adrian Sampson.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -8,7 +8,7 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
@@ -56,14 +56,14 @@ def MakeReadOnlyTest(path, field, value):
     return ReadOnlyTest
 
 def MakeWritingTest(path, correct_dict, field, testsuffix='_test'):
-    
+
     class WritingTest(unittest.TestCase):
         def setUp(self):
             # make a copy of the file we'll work on
             root, ext = os.path.splitext(path)
             self.tpath = root + testsuffix + ext
             shutil.copy(path, self.tpath)
-            
+
             # generate the new value we'll try storing
             if field == 'art':
                 self.value = 'xxx'
@@ -82,18 +82,18 @@ def MakeWritingTest(path, correct_dict, field, testsuffix='_test'):
             else:
                 raise ValueError('unknown field type ' + \
                         str(type(correct_dict[field])))
-        
-        def runTest(self):    
+
+        def runTest(self):
             # write new tag
             a = beets.mediafile.MediaFile(self.tpath)
             setattr(a, field, self.value)
             a.save()
-            
+
             # verify ALL tags are correct with modification
             b = beets.mediafile.MediaFile(self.tpath)
             for readfield in correct_dict.keys():
                 got = getattr(b, readfield)
-                
+
                 # Make sure the modified field was changed correctly...
                 if readfield == field:
                     message = field + ' modified incorrectly (changed to ' + \
@@ -103,7 +103,7 @@ def MakeWritingTest(path, correct_dict, field, testsuffix='_test'):
                         self.assertAlmostEqual(got, self.value, msg=message)
                     else:
                         self.assertEqual(got, self.value, message)
-                
+
                 # ... and that no other field was changed.
                 else:
                     # MPEG-4: ReplayGain not implented.
@@ -113,7 +113,7 @@ def MakeWritingTest(path, correct_dict, field, testsuffix='_test'):
                     # The value should be what it was originally most of the
                     # time.
                     correct = correct_dict[readfield]
-                    
+
                     # The date field, however, is modified when its components
                     # change.
                     if readfield=='date' and field in ('year', 'month', 'day'):
@@ -128,7 +128,7 @@ def MakeWritingTest(path, correct_dict, field, testsuffix='_test'):
                     # And vice-versa.
                     if field=='date' and readfield in ('year', 'month', 'day'):
                         correct = getattr(self.value, readfield)
-                    
+
                     message = readfield + ' changed when it should not have' \
                               ' (expected ' + repr(correct) + ', got ' + \
                               repr(got) + ') when modifying ' + field + \
@@ -137,11 +137,11 @@ def MakeWritingTest(path, correct_dict, field, testsuffix='_test'):
                         self.assertAlmostEqual(got, correct, msg=message)
                     else:
                         self.assertEqual(got, correct, message)
-                
+
         def tearDown(self):
             if os.path.exists(self.tpath):
                 os.remove(self.tpath)
-    
+
     return WritingTest
 
 correct_dicts = {
@@ -171,11 +171,6 @@ correct_dicts = {
         'mb_artistid':'7cf0ea9d-86b9-4dad-ba9e-2355a64899ea',
         'art':        None,
         'label':      u'the label',
-
-        'rg_track_peak': 0.0,
-        'rg_track_gain': 0.0,
-        'rg_album_peak': 0.0,
-        'rg_album_gain': 0.0,
     },
 
     # Additional coverage for common cases when "total" fields are unset.
@@ -223,12 +218,29 @@ correct_dicts = {
         'label':      u'',
 
         # Additional, non-iTunes fields.
+        'rg_track_peak':        0.0,
+        'rg_track_gain':        0.0,
+        'rg_album_peak':        0.0,
+        'rg_album_gain':        0.0,
         'albumartist':          u'',
         'mb_albumartistid':     u'',
         'artist_sort':          u'',
         'albumartist_sort':     u'',
         'acoustid_fingerprint': u'',
         'acoustid_id':          u'',
+        'mb_releasegroupid':    u'',
+        'asin':                 u'',
+        'catalognum':           u'',
+        'disctitle':            u'',
+        'encoder':              u'',
+        'script':               u'',
+        'language':             u'',
+        'country':              u'',
+        'albumstatus':          u'',
+        'media':                u'',
+        'albumdisambig':        u'',
+        'artist_credit':        u'',
+        'albumartist_credit':   u'',
     },
 
     # Full release date.
@@ -268,7 +280,7 @@ read_only_correct_dicts = {
         'bitdepth': 16,
         'channels': 2,
     },
-    
+
     'full.ogg': {
         'length': 1.0,
         'bitrate': 48000,
@@ -277,7 +289,7 @@ read_only_correct_dicts = {
         'bitdepth': 0,
         'channels': 1,
     },
-    
+
     'full.ape': {
         'length': 1.0,
         'bitrate': 112040,
@@ -332,7 +344,7 @@ test_files = {
 
 def suite():
     s = unittest.TestSuite()
-    
+
     # General tests.
     for kind, tagsets in test_files.items():
         for tagset in tagsets:
@@ -340,13 +352,13 @@ def suite():
             correct_dict = correct_dicts[tagset]
             for test in suite_for_file(path, correct_dict):
                 s.addTest(test)
-    
+
     # Special test for missing ID3 tag.
     for test in suite_for_file(os.path.join(_common.RSRC, 'empty.mp3'),
                                correct_dicts['empty'],
                                writing=False):
         s.addTest(test)
-    
+
     # Special test for advanced release date.
     for test in suite_for_file(os.path.join(_common.RSRC, 'date.mp3'),
                                correct_dicts['date']):
@@ -357,7 +369,7 @@ def suite():
         path = os.path.join(_common.RSRC, fname)
         for field, value in correct_dict.iteritems():
             s.addTest(MakeReadOnlyTest(path, field, value)())
-    
+
     return s
 
 def test_nose_suite():

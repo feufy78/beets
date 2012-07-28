@@ -8,14 +8,13 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
 """A Web interface to beets."""
 from beets.plugins import BeetsPlugin
 from beets import ui
-from beets.importer import _reopen_lib
 import beets.library
 import flask
 from flask import g
@@ -44,10 +43,7 @@ app = flask.Flask(__name__)
 
 @app.before_request
 def before_request():
-    g.lib = _reopen_lib(app.config['lib'])
-@app.teardown_request
-def teardown_request(req):
-    g.lib.conn.close()
+    g.lib = app.config['lib']
 
 
 # Items.
@@ -59,8 +55,9 @@ def single_item(item_id):
 
 @app.route('/item/')
 def all_items():
-    c = g.lib.conn.execute("SELECT id FROM items")
-    all_ids = [row[0] for row in c]
+    with g.lib.transaction() as tx:
+        rows = tx.query("SELECT id FROM items")
+    all_ids = [row[0] for row in rows]
     return flask.jsonify(item_ids=all_ids)
 
 @app.route('/item/<int:item_id>/file')
@@ -84,8 +81,9 @@ def single_album(album_id):
 
 @app.route('/album/')
 def all_albums():
-    c = g.lib.conn.execute("SELECT id FROM albums")
-    all_ids = [row[0] for row in c]
+    with g.lib.transaction() as tx:
+        rows = tx.query("SELECT id FROM albums")
+    all_ids = [row[0] for row in rows]
     return flask.jsonify(album_ids=all_ids)
 
 @app.route('/album/query/<path:query>')

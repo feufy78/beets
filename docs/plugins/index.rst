@@ -39,6 +39,7 @@ disabled by default, but you can turn them on as described above.
    lyrics
    bpd
    mpdupdate
+   fetchart
    embedart
    web
    lastgenre
@@ -46,9 +47,9 @@ disabled by default, but you can turn them on as described above.
    inline
    scrub
    rewrite
-   m3uupdate
    rdm
    mbcollection
+   importfeeds
 
 Autotagger Extensions
 ''''''''''''''''''''''
@@ -61,8 +62,8 @@ Metadata
 
 * :doc:`lyrics`: Automatically fetch song lyrics.
 * :doc:`lastgenre`: Fetch genres based on Last.fm tags.
-* :doc:`embedart`: Embed album art images into files' metadata. (By default,
-  beets uses image files "on the side" instead of embedding images.)
+* :doc:`fetchart`: Fetch album cover art from various sources.
+* :doc:`embedart`: Embed album art images into files' metadata.
 * :doc:`replaygain`: Calculate volume normalization for players that support it.
 * :doc:`scrub`: Clean extraneous metadata from music files.
 
@@ -77,7 +78,7 @@ Interoperability
 
 * :doc:`mpdupdate`: Automatically notifies `MPD`_ whenever the beets library
   changes.
-* :doc:`m3uupdate`: Catalog imported files in an ``.m3u`` playlist file.
+* :doc:`importfeeds`: Keep track of imported files via ``.m3u`` playlist file(s) or symlinks.
 
 Miscellaneous
 '''''''''''''
@@ -103,12 +104,15 @@ Here are a few of the plugins written by the beets community:
 
 * `A cmus plugin`_ integrates with the `cmus`_ console music player.
 
+* `featInTitle`_ moves featured artists from the artist tag to the title tag.
+
 .. _beetFs: http://code.google.com/p/beetfs/
 .. _Beet-MusicBrainz-Collection:
     https://github.com/jeffayle/Beet-MusicBrainz-Collection/
 .. _A cmus plugin:
     https://github.com/coolkehon/beets/blob/master/beetsplug/cmus.py
 .. _cmus: http://cmus.sourceforge.net/
+.. _featInTitle: https://github.com/Verrus/beets-plugin-featInTitle/
 
 Writing Plugins
 ---------------

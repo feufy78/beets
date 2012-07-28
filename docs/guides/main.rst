@@ -10,7 +10,7 @@ Installing
 ----------
 
 You will need Python. (Beets is written for `Python 2.7`_, but it works with
-2.5 and 2.6 as well. Python 3.x is not yet supported.)
+2.6 as well. Python 3.x is not yet supported.)
 
 .. _Python 2.7: http://www.python.org/download/releases/2.7.2/
 
@@ -25,10 +25,9 @@ You will need Python. (Beets is written for `Python 2.7`_, but it works with
 * For **Arch Linux**, try getting `beets from AUR`_. (There's also a
   bleeding-edge `dev package`_, which will probably set your computer on fire.)
 
-* For **Gentoo Linux**, there are a couple of overlays that include beets. `One
-  by vh4x0r`_ includes a development ebuild and `one by syranez`_ includes the
-  released version. Eventually, beets may eventually get `added to the official
-  Portage tree`_.
+* For **Gentoo Linux**, beets is in Portage as ``media-sound/beets``. Just run
+  ``emerge beets`` to install. There are several USE flags available for
+  optional plugin dependencies.
 
 .. _beets from AUR: http://aur.archlinux.org/packages.php?ID=39577
 .. _dev package: http://aur.archlinux.org/packages.php?ID=48617
@@ -36,7 +35,6 @@ You will need Python. (Beets is written for `Python 2.7`_, but it works with
 .. _Ubuntu details: https://launchpad.net/ubuntu/+source/beets
 .. _One by vh4x0r: https://github.com/vh4x0r/apokolips
 .. _one by syranez: https://github.com/syranez/gentoo
-.. _added to the official portage tree: http://www.gentoo.org/doc/en/ebuild-submit.xml
 
 If you have `pip`_, just say ``pip install beets`` (you might need ``sudo`` in
 front of that). On Arch, you'll need to use ``pip2`` instead of ``pip``.
@@ -80,12 +78,19 @@ get it right:
 6. You're all set! Type ``beet`` at the command prompt to make sure everything's
    in order.
 
+Windows users may also want to install a context menu item for importing files
+into beets. Just download and open `beets.reg`_ to add the necessary keys to the
+registry. You can then right-click a directory and choose "Import with beets".
+If Python is in a nonstandard location on your system, you may have to edit the
+command path manually.
+
 Because I don't use Windows myself, I may have missed something. If you have
 trouble or you have more detail to contribute here, please `let me know`_.
 
 .. _let me know: mailto:adrian@radbox.org
 .. _install Python: http://python.org/download/
 .. _Setuptools: http://pypi.python.org/pypi/setuptools
+.. _beets.reg: https://github.com/sampsyo/beets/blob/master/extra/beets.reg
 
 
 Configuring
@@ -111,9 +116,7 @@ empty folder using beets' ``import`` command (see below). But you can configure
 beets to behave many other ways:
 
 * Start with a new empty directory, but *move* new music in instead of copying
-  it (saving disk space). Put ``import_delete: yes`` in your config file, which
-  will instruct beets to remove source music after it's been placed in your
-  organized directory.
+  it (saving disk space). Put ``import_move: yes`` in your config file.
 * Keep your current directory structure; importing should never move or copy
   files but instead just correct the tags on music. Put the line ``import_copy:
   no`` in your config file to disable any copying or renaming. Make sure to
@@ -168,12 +171,6 @@ This will attempt to autotag the new album (interactively) and add it to your
 library. There are, of course, more options for this command---just type ``beet
 help import`` to see what's available.
 
-By default, the ``import`` command will try to find and download album art for
-every album it finds. It will store the art in a file called ``cover.jpg``
-alongside the songs. If you don't like that, you can disable it with the ``-R``
-switch or by setting a value in the :doc:`configuration file
-</reference/config>`.
-
 Seeing Your Music
 -----------------
 
@@ -213,7 +210,7 @@ So handy!
 Beets also has a ``stats`` command, just in case you want to see how much music
 you have::
 
-    $ ./beet stats
+    $ beet stats
     Tracks: 13019
     Total time: 4.9 weeks
     Total size: 71.1 GB

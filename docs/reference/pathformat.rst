@@ -68,11 +68,55 @@ These functions are built in to beets:
 * ``%asciify{text}``: Convert non-ASCII characters to their ASCII equivalents.
   For example, "café" becomes "cafe". Uses the mapping provided by the
   `unidecode module`_.
+* ``%aunique{identifiers,disambiguators}``: Provides a unique string to
+  disambiguate similar albums in the database. See :ref:`aunique`, below.
 
 .. _unidecode module: http://pypi.python.org/pypi/Unidecode
 
 Plugins can extend beets with more template functions (see
 :ref:`writing-plugins`).
+
+
+.. _aunique:
+
+Album Disambiguation
+--------------------
+
+Occasionally, bands release two albums with the same name (c.f. Crystal Castles,
+Weezer, and any situation where a single has the same name as an album or EP).
+Beets ships with special support, in the form of the ``%aunique{}`` template
+function, to avoid placing two identically-named albums in the same directory on
+disk.
+
+The ``aunique`` function detects situations where two albums have some identical
+fields and emits text from additional fields to disambiguate the albums. For
+example, if you have both Crystal Castles albums in your library, ``%aunique{}``
+will expand to "[2008]" for one album and "[2010]" for the other. The
+function detects that you have two albums with the same artist and title but
+that they have different release years.
+
+For full flexibility, the ``%aunique`` function takes two arguments, each of
+which are whitespace-separated lists of album field names: a set of
+*identifiers* and a set of *disambiguators*. Any group of albums with identical
+values for all the identifiers will be considered "duplicates". Then, the
+function tries each disambiguator field, looking for one that distinguishes each
+of the duplicate albums from each other. The first such field is used as the
+result for ``%aunique``. If no field suffices, an arbitrary number is used to
+distinguish the two albums.
+
+The default identifiers are ``albumartist album`` and the default disambiguators
+are ``albumtype year label catalognum albumdisambig``. So you can get reasonable
+disambiguation behavior if you just use ``%aunique{}`` with no parameters in
+your path forms (as in the default path formats), but you can customize the
+disambiguation if, for example, you include the year by default in path formats.
+
+One caveat: When you import an album that is named identically to one already in
+your library, the *first* album—the one already in your library— will not
+consider itself a duplicate at import time. This means that ``%aunique{}`` will
+expand to nothing for this album and no disambiguation string will be used at
+its import time. Only the second album will receive a disambiguation string. If
+you want to add the disambiguation string to both albums, just run ``beet move``
+(possibly restricted by a query) to update the paths for the albums.
 
 
 Syntax Details
@@ -100,25 +144,29 @@ integer; if you write ``%left{foo,bar}``, this will be expanded to something
 like ``<ValueError: invalid literal for int()>``.
 
 
+.. _itemfields:
+
 Available Values
 ----------------
 
-Here's a (comprehensive?) list of the different values available to path
-formats. (I will try to keep it up to date, but I might forget. The current list
-can be found definitively `in the source`_.) Note that plugins can add new (or
-replace existing) template values (see :ref:`writing-plugins`).
-
-.. _in the source: 
-    https://github.com/sampsyo/beets/blob/master/beets/library.py#L39
+Here's a list of the different values available to path formats. The current
+list can be found definitively by running the command ``beet fields``. Note that
+plugins can add new (or replace existing) template values (see
+:ref:`writing-plugins`).
 
 Ordinary metadata:
 
 * title
 * artist
-* artist_sort
+* artist_sort: The "sort name" of the track artist (e.g., "Beatles, The" or
+  "White, Jack").
+* artist_credit: The track-specific `artist credit`_ name, which may be a
+  variation of the artist's "canonical" name.
 * album
-* albumartist
+* albumartist: The artist for the entire album, which may be different from the
+  artists for the individual tracks.
 * albumartist_sort
+* albumartist_credit
 * genre
 * composer
 * grouping
@@ -132,11 +180,22 @@ Ordinary metadata:
 * lyrics
 * comments
 * bpm
-* comp
-* albumtype (the MusicBrainz album type; the MusicBrainz wiki has a `list of
-  type names`_)
+* comp: Compilation flag.
+* albumtype: The MusicBrainz album type; the MusicBrainz wiki has a `list of
+  type names`_.
 * label
+* asin
+* catalognum
+* script
+* language
+* country
+* albumstatus
+* media
+* albumdisambig
+* disctitle
+* encoder
 
+.. _artist credit: http://wiki.musicbrainz.org/Artist_Credit
 .. _list of type names: http://wiki.musicbrainz.org/XMLWebService#Release_Type_and_Status
 
 Audio information:
@@ -154,5 +213,6 @@ MusicBrainz and fingerprint information:
 * mb_albumid
 * mb_artistid
 * mb_albumartistid
+* mb_releasegroupid
 * acoustid_fingerprint
 * acoustid_id

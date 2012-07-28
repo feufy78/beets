@@ -8,12 +8,14 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
 """Fetches, embeds, and displays lyrics.
 """
+from __future__ import print_function
+
 import urllib
 import re
 import logging
@@ -23,12 +25,27 @@ from beets import ui
 from beets.ui import commands
 
 
+# Global logger.
+
+log = logging.getLogger('beets')
+
+
 # Lyrics scrapers.
 
 COMMENT_RE = re.compile(r'<!--.*-->', re.S)
 DIV_RE = re.compile(r'<(/?)div>?')
 TAG_RE = re.compile(r'<[^>]*>')
 BREAK_RE = re.compile(r'<br\s*/?>')
+
+def fetch_url(url):
+    """Retrieve the content at a given URL, or return None if the source
+    is unreachable.
+    """
+    try:
+        return urllib.urlopen(url).read()
+    except IOError as exc:
+        log.debug('failed to fetch: {0} ({1})'.format(url, str(exc)))
+        return None
 
 def unescape(text):
     """Resolves &#xxx; HTML entities (and some others)."""
@@ -68,7 +85,7 @@ def extract_text(html, starttag):
             parts.append(html[pos:match.start()])
             break
     else:
-        print 'no closing tag found!'
+        print('no closing tag found!')
         return
     lyrics = ''.join(parts)
 
@@ -97,13 +114,19 @@ def _lw_encode(s):
 def fetch_lyricswiki(artist, title):
     """Fetch lyrics from LyricsWiki."""
     url = LYRICSWIKI_URL_PATTERN % (_lw_encode(artist), _lw_encode(title))
-    html = urllib.urlopen(url).read()
+    html = fetch_url(url)
+    if not html:
+        return
 
     lyrics = extract_text(html, "<div class='lyricbox'>")
     if lyrics and 'Unfortunately, we are not licensed' not in lyrics:
         return lyrics
 
 LYRICSCOM_URL_PATTERN = 'http://www.lyrics.com/%s-lyrics-%s.html'
+LYRICSCOM_NOT_FOUND = (
+    'Sorry, we do not have the lyric',
+    'Submit Lyrics',
+)
 def _lc_encode(s):
     s = re.sub(r'\s+', '-', s)
     if isinstance(s, unicode):
@@ -112,13 +135,20 @@ def _lc_encode(s):
 def fetch_lyricscom(artist, title):
     """Fetch lyrics from Lyrics.com."""
     url = LYRICSCOM_URL_PATTERN % (_lc_encode(title), _lc_encode(artist))
-    html = urllib.urlopen(url).read()
+    html = fetch_url(url)
+    if not html:
+        return
 
     lyrics = extract_text(html, '<div id="lyric_space">')
-    if lyrics and 'Sorry, we do not have the lyric' not in lyrics:
-        parts = lyrics.split('\n---\nLyrics powered by', 1)
-        if parts:
-            return parts[0]
+    if not lyrics:
+        return
+    for not_found_str in LYRICSCOM_NOT_FOUND:
+        if not_found_str in lyrics:
+            return
+
+    parts = lyrics.split('\n---\nLyrics powered by', 1)
+    if parts:
+        return parts[0]
 
 BACKENDS = [fetch_lyricswiki, fetch_lyricscom]
 def get_lyrics(artist, title):
@@ -128,12 +158,11 @@ def get_lyrics(artist, title):
         if lyrics:
             if isinstance(lyrics, str):
                 lyrics = lyrics.decode('utf8', 'ignore')
+            log.debug('got lyrics from backend: {0}'.format(backend.__name__))
             return lyrics
 
 
 # Plugin logic.
-
-log = logging.getLogger('beets')
 
 def fetch_item_lyrics(lib, loglevel, item, write):
     """Fetch and store lyrics for a single item. If ``write``, then the
@@ -160,10 +189,13 @@ def fetch_item_lyrics(lib, loglevel, item, write):
     if write:
         item.write()
     lib.store(item)
-    lib.save()
 
 AUTOFETCH = True
 class LyricsPlugin(BeetsPlugin):
+    def __init__(self):
+        super(LyricsPlugin, self).__init__()
+        self.import_stages = [self.imported]
+
     def commands(self):
         cmd = ui.Subcommand('lyrics', help='fetch song lyrics')
         cmd.parser.add_option('-p', '--print', dest='printlyr',
@@ -185,13 +217,8 @@ class LyricsPlugin(BeetsPlugin):
         global AUTOFETCH
         AUTOFETCH = ui.config_val(config, 'lyrics', 'autofetch', True, bool)
 
-# Auto-fetch lyrics on import.
-@LyricsPlugin.listen('album_imported')
-def album_imported(lib, album, config):
-    if AUTOFETCH:
-        for item in album.items():
-            fetch_item_lyrics(lib, logging.DEBUG, item, config.write)
-@LyricsPlugin.listen('item_imported')
-def item_imported(lib, item, config):
-    if AUTOFETCH:
-        fetch_item_lyrics(lib, logging.DEBUG, item, config.write)
+    # Auto-fetch lyrics on import.
+    def imported(self, config, task):
+        if AUTOFETCH:
+            for item in task.imported_items():
+                fetch_item_lyrics(config.lib, logging.DEBUG, item, False)

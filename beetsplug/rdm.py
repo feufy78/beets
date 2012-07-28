@@ -8,17 +8,16 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
+"""Get a random song or album from the library.
+"""
 from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand, decargs, print_
 from beets.util.functemplate import Template
 import random
-
-"""Get a random song or album from the library.
-"""
 
 def random_item(lib, config, opts, args):
     query = decargs(args)
@@ -45,13 +44,13 @@ def random_item(lib, config, opts, args):
             if path:
                 print_(album.item_dir())
             else:
-                print_(template.substitute(album._record))
+                print_(album.evaluate_template(template))
     else:
         for item in objs:
             if path:
                 print_(item.path)
             else:
-                print_(template.substitute(item.record))
+                print_(item.evaluate_template(template, lib))
 
 random_cmd = Subcommand('random',
                         help='chose a random track or album')

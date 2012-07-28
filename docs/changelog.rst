@@ -1,8 +1,129 @@
 Changelog
 =========
 
-1.0b14 (in development)
------------------------
+1.0b15 (July 26, 2012)
+----------------------
+
+The fifteenth (!) beta of beets is compendium of small fixes and features, most
+of which represent long-standing requests. The improvements include matching
+albums with extra tracks, per-disc track numbering in multi-disc albums, an
+overhaul of the album art downloader, and robustness enhancements that should
+keep beets running even when things go wrong. All these smaller changes should
+help us focus on some larger changes coming before 1.0.
+
+Please note that this release contains one backwards-incompatible change: album
+art fetching, which was previously baked into the import workflow, is now
+encapsulated in a plugin (the :doc:`/plugins/fetchart`). If you want to continue
+fetching cover art for your music, enable this plugin after upgrading to beets
+1.0b15.
+
+* The autotagger can now find matches for albums when you have **extra tracks**
+  on your filesystem that aren't present in the MusicBrainz catalog. Previously,
+  if you tried to match album with 15 audio files but the MusicBrainz entry had
+  only 14 tracks, beets would ignore this match. Now, beets will show you
+  matches even when they are "too short" and indicate which tracks from your
+  disk are unmatched.
+* Tracks on multi-disc albums can now be **numbered per-disc** instead of
+  per-album via the :ref:`per_disc_numbering` config option.
+* The default output format for the ``beet list`` command is now configurable
+  via the :ref:`list_format_item` and :ref:`list_format_album` config options.
+  Thanks to Fabrice Laporte.
+* Album **cover art fetching** is now encapsulated in the
+  :doc:`/plugins/fetchart`. Be sure to enable this plugin if you're using this
+  functionality. As a result of this new organization, the new plugin has gained
+  a few new features:
+
+  * "As-is" and non-autotagged imports can now have album art imported from
+    the local filesystem (although Web repositories are still not searched in
+    these cases).
+  * A new command, ``beet fetchart``, allows you to download album art
+    post-import. If you only want to fetch art manually, not automatically
+    during import, set the new plugin's ``autofetch`` option to ``no``.
+  * New album art sources have been added.
+
+* Errors when communicating with MusicBrainz now log an error message instead of
+  halting the importer.
+* Similarly, filesystem manipulation errors now print helpful error messages
+  instead of a messy traceback. They still interrupt beets, but they should now
+  be easier for users to understand. Tracebacks are still available in verbose
+  mode.
+* New metadata fields for `artist credits`_: ``artist_credit`` and
+  ``albumartist_credit`` can now contain release- and recording-specific
+  variations of the artist's name. See :ref:`itemfields`.
+* Revamped the way beets handles concurrent database access to avoid
+  nondeterministic SQLite-related crashes when using the multithreaded importer.
+  On systems where SQLite was compiled without ``usleep(3)`` support,
+  multithreaded database access could cause an internal error (with the message
+  "database is locked"). This release synchronizes access to the database to
+  avoid internal SQLite contention, which should avoid this error.
+* Plugins can now add parallel stages to the import pipeline. See
+  :ref:`writing-plugins`.
+* Beets now prints out an error when you use an unrecognized field name in a
+  query: for example, when running ``beet ls -a artist:foo`` (because ``artist``
+  is an item-level field).
+* New plugin events:
+
+  * ``import_task_choice`` is called after an import task has an action
+    assigned.
+  * ``import_task_files`` is called after a task's file manipulation has
+    finished (copying or moving files, writing metadata tags).
+  * ``library_opened`` is called when beets starts up and opens the library
+    database.
+
+* :doc:`/plugins/lastgenre`: Fixed a problem where path formats containing
+  ``$genre`` would use the old genre instead of the newly discovered one.
+* Fix a crash when moving files to a Samba share.
+* :doc:`/plugins/mpdupdate`: Fix TypeError crash (thanks to Philippe Mongeau).
+* When re-importing files with ``import_copy`` enabled, only files inside the
+  library directory are moved. Files outside the library directory are still
+  copied. This solves a problem (introduced in 1.0b14) where beets could crash
+  after adding files to the library but before finishing copying them; during
+  the next import, the (external) files would be moved instead of copied.
+* Artist sort names are now populated correctly for multi-artist tracks and
+  releases. (Previously, they only reflected the first artist.)
+* When previewing changes during import, differences in track duration are now
+  shown as "2:50 vs. 3:10" rather than separated with ``->`` like track numbers.
+  This should clarify that beets isn't doing anything to modify lengths.
+* Fix a problem with query-based path format matching where a field-qualified
+  pattern, like ``albumtype_soundtrack``, would match everything.
+* :doc:`/plugins/chroma`: Fix matching with ambiguous Acoustids. Some Acoustids
+  are identified with multiple recordings; beets now considers any associated
+  recording a valid match. This should reduce some cases of errant track
+  reordering when using chroma.
+* Fix the ID3 tag name for the catalog number field.
+* :doc:`/plugins/chroma`: Fix occasional crash at end of fingerprint submission
+  and give more context to "failed fingerprint generation" errors.
+* Interactive prompts are sent to stdout instead of stderr.
+* :doc:`/plugins/embedart`: Fix crash when audio files are unreadable.
+* :doc:`/plugins/bpd`: Fix crash when sockets disconnect (thanks to Matteo
+  Mecucci).
+* Fix an assertion failure while importing with moving enabled when the file was
+  already at its destination.
+* Fix Unicode values in the ``replace`` config option (thanks to Jakob Borg).
+* Use a nicer error message when input is requested but stdin is closed.
+* Fix errors on Windows for certain Unicode characters that can't be represented
+  in the MBCS encoding. This required a change to the way that paths are
+  represented in the database on Windows; if you find that beets' paths are out
+  of sync with your filesystem with this release, delete and recreate your
+  database with ``beet import -AWC /path/to/music``.
+* Fix ``import`` with relative path arguments on Windows.
+
+.. _artist credits: http://wiki.musicbrainz.org/Artist_Credit
+
+1.0b14 (May 12, 2012)
+---------------------
+
+The centerpiece of this beets release is the graceful handling of
+similarly-named albums. It's now possible to import two albums with the same
+artist and title and to keep them from conflicting in the filesystem. Many other
+awesome new features were contributed by the beets community, including regular
+expression queries, artist sort names, moving files on import. There are three
+new plugins: random song/album selection; MusicBrainz "collection" integration;
+and a plugin for interoperability with other music library systems.
+
+A million thanks to the (growing) beets community for making this a huge
+release.
+
 * The importer now gives you **choices when duplicates are detected**.
   Previously, when beets found an existing album or item in your library
   matching the metadata on a newly-imported one, it would just skip the new
@@ -10,28 +131,68 @@ Changelog
   choices: skip the new music (the previous behavior), keep both, or remove the
   old music. See the :ref:`guide-duplicates` section in the autotagging guide
   for details.
+* Beets can now avoid storing identically-named albums in the same directory.
+  The new ``%aunique{}`` template function, which is included in the default
+  path formats, ensures that Crystal Castles' albums will be placed into
+  different directories. See :ref:`aunique` for details.
+* Beets queries can now use **regular expressions**. Use an additional ``:`` in
+  your query to enable regex matching. See :ref:`regex` for the full details.
+  Thanks to Matteo Mecucci.
 * Artist **sort names** are now fetched from MusicBrainz. There are two new data
   fields, ``artist_sort`` and ``albumartist_sort``, that contain sortable artist
   names like "Beatles, The". These fields are also used to sort albums and items
   when using the ``list`` command. Thanks to Paul Provost.
+* Many other **new metadata fields** were added, including ASIN, label catalog
+  number, disc title, encoder, and MusicBrainz release group ID. For a full list
+  of fields, see :ref:`itemfields`.
 * :doc:`/plugins/chroma`: A new command, ``beet submit``, will **submit
   fingerprints** to the Acoustid database. Submitting your library helps
   increase the coverage and accuracy of Acoustid fingerprinting. The Chromaprint
   fingerprint and Acoustid ID are also now stored for all fingerprinted tracks.
   This version of beets *requires* at least version 0.6 of `pyacoustid`_ for
   fingerprinting to work.
+* The importer can now **move files**. Previously, beets could only copy files
+  and delete the originals, which is inefficient if the source and destination
+  are on the same filesystem. Use the ``import_move`` configuration option and
+  see :doc:`/reference/config` for more details. Thanks to Domen Kožar.
 * New :doc:`/plugins/rdm`: Randomly select albums and tracks from your library.
   Thanks to Philippe Mongeau.
 * The :doc:`/plugins/mbcollection` by Jeffrey Aylesworth was added to the core
   beets distribution.
-* New :doc:`/plugins/m3uupdate`: Catalog imported files in an ``m3u`` playlist
-  file for easy importing to other systems. Thanks to Fabrice Laporte.
+* New :doc:`/plugins/importfeeds`: Catalog imported files in ``m3u`` playlist
+  files or as symlinks for easy importing to other systems. Thanks to Fabrice
+  Laporte.
+* The ``-f`` (output format) option to the ``beet list`` command can now contain
+  template functions as well as field references. Thanks to Steve Dougherty.
+* A new command ``beet fields`` displays the available metadata fields (thanks
+  to Matteo Mecucci).
+* The ``import`` command now has a ``--noincremental`` or ``-I`` flag to disable
+  incremental imports (thanks to Matteo Mecucci).
 * When the autotagger fails to find a match, it now displays the number of
-  tracks on the album (to help you guess what might be going wrong).
+  tracks on the album (to help you guess what might be going wrong) and a link
+  to the FAQ.
+* The default filename character substitutions were changed to be more
+  conservative. The Windows "reserved characters" are substituted by default
+  even on Unix platforms (this causes less surprise when using Samba shares to
+  store music). To customize your character substitutions, see :ref:`the replace
+  config option <replace>`.
+* :doc:`/plugins/lastgenre`: Added a "fallback" option when no suitable genre
+  can be found (thanks to Fabrice Laporte).
+* :doc:`/plugins/rewrite`: Unicode rewriting rules are now allowed (thanks to
+  Nicolas Dietrich).
+* Filename collisions are now avoided when moving album art.
+* :doc:`/plugins/bpd`: Print messages to show when directory tree is being
+  constructed.
 * :doc:`/plugins/bpd`: Use Gstreamer's ``playbin2`` element instead of the
   deprecated ``playbin``.
+* :doc:`/plugins/bpd`: Random and repeat modes are now supported (thanks to
+  Matteo Mecucci).
+* :doc:`/plugins/bpd`: Listings are now sorted (thanks once again to Matteo
+  Mecucci).
 * Filenames are normalized with Unicode Normal Form D (NFD) on Mac OS X and NFC
   on all other platforms.
+* Significant internal restructuring to avoid SQLite locking errors. As part of
+  these changes, the not-very-useful "save" plugin event has been removed.
 
 .. _pyacoustid: https://github.com/sampsyo/pyacoustid
 

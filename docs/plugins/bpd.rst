@@ -17,10 +17,9 @@ Before you can use BPD, you'll need the media library called GStreamer (along
 with its Python bindings) on your system.
 
 * On Mac OS X, you can use `MacPorts`_ or `Homebrew`_. For MacPorts, just run
-  ``port install py27-gst-python``. For Homebrew, the `Mopidy`_ project has
-  `detailed instructions`_ for installing the necessary libraries.
-  (Note that you'll need the
-  Mac OS X Developer Tools.)
+  ``port install py27-gst-python``. For Homebrew, use `my auxiliary repository`_
+  to install: ``brew tap sampsyo/py ; brew install gst-python``.
+  (Note that you'll need the Mac OS X Developer Tools in either case.)
 
 * On Linux, it's likely that you already have gst-python. (If not, your
   distribution almost certainly has a package for it.)
@@ -31,8 +30,7 @@ with its Python bindings) on your system.
 .. _MacPorts: http://www.macports.org/
 .. _GStreamer WinBuilds: http://www.gstreamer-winbuild.ylatuya.es/
 .. _Homebrew: http://mxcl.github.com/homebrew/
-.. _Mopidy: https://github.com/mopidy/mopidy/
-.. _detailed instructions: http://docs.mopidy.com/en/latest/installation/gstreamer/#installing-gstreamer-on-os-x
+.. _my auxiliary repository: https://github.com/sampsyo/homebrew-py
 
 Using and Configuring
 ---------------------
@@ -94,8 +92,9 @@ contains a dummy implementation that just calls playlistinfo.
 
 The ``stats`` command always send zero for ``playtime``, which is supposed to
 indicate the amount of time the server has spent playing music. BPD doesn't
-currently keep track of this. Also, because database updates aren't yet
-supported, ``db_update`` is just the time the server was started.
+currently keep track of this.
+
+The ``update`` command regenerates the directory tree from the beets database.
 
 Unimplemented Commands
 ----------------------
@@ -104,10 +103,6 @@ These are the commands from `the MPD protocol`_ that have not yet been
 implemented in BPD.
 
 .. _the MPD protocol: http://mpd.wikia.com/wiki/MusicPlayerDaemonCommands
-
-Database:
-
-* update
 
 Saved playlists:
 

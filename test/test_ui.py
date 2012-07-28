@@ -8,7 +8,7 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
@@ -45,60 +45,68 @@ class ListTest(unittest.TestCase):
 
     def tearDown(self):
         self.io.restore()
-        
+
+    def _run_list(self, query='', album=False, path=False, fmt=None):
+        if not fmt:
+            if album:
+                fmt = commands.DEFAULT_LIST_FORMAT_ALBUM
+            else:
+                fmt = commands.DEFAULT_LIST_FORMAT_ITEM
+        commands.list_items(self.lib, query, album, path, fmt)
+
     def test_list_outputs_item(self):
-        commands.list_items(self.lib, '', False, False, None)
+        self._run_list()
         out = self.io.getoutput()
         self.assertTrue(u'the title' in out)
 
     def test_list_unicode_query(self):
         self.item.title = u'na\xefve'
         self.lib.store(self.item)
-        self.lib.save()
+        self.lib._connection().commit()
 
-        commands.list_items(self.lib, [u'na\xefve'], False, False, None)
+        self._run_list([u'na\xefve'])
         out = self.io.getoutput()
         self.assertTrue(u'na\xefve' in out.decode(self.io.stdout.encoding))
 
     def test_list_item_path(self):
-        commands.list_items(self.lib, '', False, True, None)
+        self._run_list(path=True)
         out = self.io.getoutput()
         self.assertEqual(out.strip(), u'xxx/yyy')
 
     def test_list_album_outputs_something(self):
-        commands.list_items(self.lib, '', True, False, None)
+        self._run_list(album=True)
         out = self.io.getoutput()
         self.assertGreater(len(out), 0)
 
     def test_list_album_path(self):
-        commands.list_items(self.lib, '', True, True, None)
+        self._run_list(album=True, path=True)
         out = self.io.getoutput()
         self.assertEqual(out.strip(), u'xxx')
-    
+
     def test_list_album_omits_title(self):
-        commands.list_items(self.lib, '', True, False, None)
+        self._run_list(album=True)
         out = self.io.getoutput()
         self.assertTrue(u'the title' not in out)
 
     def test_list_uses_track_artist(self):
-        commands.list_items(self.lib, '', False, False, None)
+        self._run_list()
         out = self.io.getoutput()
         self.assertTrue(u'the artist' in out)
         self.assertTrue(u'the album artist' not in out)
-    
+
     def test_list_album_uses_album_artist(self):
-        commands.list_items(self.lib, '', True, False, None)
+        self._run_list(album=True)
         out = self.io.getoutput()
         self.assertTrue(u'the artist' not in out)
         self.assertTrue(u'the album artist' in out)
 
     def test_list_item_format_artist(self):
-        commands.list_items(self.lib, '', False, False, '$artist')
+        self._run_list(fmt='$artist')
         out = self.io.getoutput()
         self.assertTrue(u'the artist' in out)
 
     def test_list_item_format_multiple(self):
-        commands.list_items(self.lib, '', False, False, '$artist - $album - $year')
+        self._run_list(fmt='$artist - $album - $year')
         out = self.io.getoutput()
         self.assertTrue(u'1' in out)
         self.assertTrue(u'the album' in out)
@@ -106,13 +114,13 @@ class ListTest(unittest.TestCase):
         self.assertEqual(u'the artist - the album - 1', out.strip())
 
     def test_list_album_format(self):
-        commands.list_items(self.lib, '', True, False, '$genre')
+        self._run_list(album=True, fmt='$genre')
         out = self.io.getoutput()
         self.assertTrue(u'the genre' in out)
         self.assertTrue(u'the album' not in out)
 
     def test_list_item_path_ignores_format(self):
-        commands.list_items(self.lib, '', False, True, '$year - $artist')
+        self._run_list(path=True, fmt='$year - $artist')
         out = self.io.getoutput()
         self.assertEqual(out.strip(), u'xxx/yyy')
 
@@ -407,7 +415,7 @@ class PrintTest(unittest.TestCase):
         self.io.install()
     def tearDown(self):
         self.io.restore()
-    
+
     def test_print_without_locale(self):
         lang = os.environ.get('LANG')
         if lang:
@@ -454,7 +462,7 @@ class AutotagTest(unittest.TestCase):
             'path',
             [_common.item()],
         )
-        task.set_match('artist', 'album', [], autotag.RECOMMEND_NONE)
+        task.set_candidates('artist', 'album', [], autotag.RECOMMEND_NONE)
         res = commands.choose_match(task, _common.iconfig(None, quiet=False))
         self.assertEqual(res, result)
         self.assertTrue('No match' in self.io.getoutput())
@@ -470,9 +478,9 @@ class AutotagTest(unittest.TestCase):
 class ImportTest(unittest.TestCase):
     def test_quiet_timid_disallowed(self):
         self.assertRaises(ui.UserError, commands.import_files,
-                          None, [], False, False, False, None, False, False,
-                          False, False, True, False, None, False, True, None,
-                          False, [])
+                          None, [], False, False, False, False, None,
+                          False, False, False, True, False, None, False, True,
+                          None, False, [], False)
 
 class InputTest(unittest.TestCase):
     def setUp(self):
@@ -503,7 +511,9 @@ class ConfigTest(unittest.TestCase):
 
     def test_paths_section_respected(self):
         def func(lib, config, opts, args):
-            self.assertEqual(lib.path_formats[0], ('x', 'y'))
+            key, template = lib.path_formats[0]
+            self.assertEqual(key, 'x')
+            self.assertEqual(template.original, 'y')
         self._run_main([], textwrap.dedent("""
             [paths]
             x=y"""), func)
@@ -532,10 +542,18 @@ class ConfigTest(unittest.TestCase):
     def test_replacements_parsed(self):
         def func(lib, config, opts, args):
             replacements = lib.replacements
-            self.assertEqual(replacements, [(re.compile(r'[xy]'), 'z')])
+            self.assertEqual(replacements, [(re.compile(ur'[xy]'), u'z')])
         self._run_main([], textwrap.dedent("""
             [beets]
             replace=[xy] z"""), func)
+
+    def test_replacements_parsed_unicode(self):
+        def func(lib, config, opts, args):
+            replacements = lib.replacements
+            self.assertEqual(replacements, [(re.compile(ur'\u2019'), u'z')])
+        self._run_main([], textwrap.dedent(u"""
+            [beets]
+            replace=\u2019 z"""), func)
 
     def test_empty_replacements_produce_none(self):
         def func(lib, config, opts, args):
@@ -549,8 +567,8 @@ class ConfigTest(unittest.TestCase):
         def func(lib, config, opts, args):
             replacements = lib.replacements
             self.assertEqual(replacements, [
-                (re.compile(r'[xy]'), 'z'),
-                (re.compile(r'foo'), 'bar'),
+                (re.compile(ur'[xy]'), u'z'),
+                (re.compile(ur'foo'), u'bar'),
             ])
         self._run_main([], textwrap.dedent("""
             [beets]
@@ -637,72 +655,66 @@ class ShowChangeTest(unittest.TestCase):
     def setUp(self):
         self.io = _common.DummyIO()
         self.io.install()
+
+        self.items = [_common.item()]
+        self.items[0].track = 1
+        self.items[0].path = '/path/to/file.mp3'
+        self.info = autotag.AlbumInfo(
+            'the album', 'album id', 'the artist', 'artist id', [
+                autotag.TrackInfo('the title', 'track id', index=1)
+        ])
+
     def tearDown(self):
         self.io.restore()
 
-    def _items_and_info(self):
-        items = [_common.item()]
-        items[0].track = 1
-        items[0].path = '/path/to/file.mp3'
-        info = autotag.AlbumInfo(
-            'the album', 'album id', 'the artist', 'artist id', [
-                autotag.TrackInfo('the title', 'track id')
-        ])
-        return items, info
+    def _show_change(self, items=None, info=None,
+                     cur_artist='the artist', cur_album='the album',
+                     dist=0.1):
+        items = items or self.items
+        info = info or self.info
+        mapping = dict(zip(items, info.tracks))
+        commands.show_change(
+            cur_artist,
+            cur_album,
+            autotag.AlbumMatch(0.1, info, mapping, set(), set()),
+            color=False,
+        )
+        return self.io.getoutput().lower()
 
     def test_null_change(self):
-        items, info = self._items_and_info()
-        commands.show_change('the artist', 'the album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        msg = self._show_change()
         self.assertTrue('similarity: 90' in msg)
         self.assertTrue('tagging:' in msg)
 
     def test_album_data_change(self):
-        items, info = self._items_and_info()
-        commands.show_change('another artist', 'another album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        msg = self._show_change(cur_artist='another artist',
+                                cur_album='another album')
         self.assertTrue('correcting tags from:' in msg)
 
     def test_item_data_change(self):
-        items, info = self._items_and_info()
-        items[0].title = 'different'
-        commands.show_change('the artist', 'the album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        self.items[0].title = 'different'
+        msg = self._show_change()
         self.assertTrue('different -> the title' in msg)
 
     def test_item_data_change_with_unicode(self):
-        items, info = self._items_and_info()
-        items[0].title = u'caf\xe9'
-        commands.show_change('the artist', 'the album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        self.items[0].title = u'caf\xe9'
+        msg = self._show_change()
         self.assertTrue(u'caf\xe9 -> the title' in msg.decode('utf8'))
 
     def test_album_data_change_with_unicode(self):
-        items, info = self._items_and_info()
-        commands.show_change(u'caf\xe9', u'another album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        msg = self._show_change(cur_artist=u'caf\xe9',
+                                cur_album=u'another album')
         self.assertTrue('correcting tags from:' in msg)
 
     def test_item_data_change_title_missing(self):
-        items, info = self._items_and_info()
-        items[0].title = ''
-        commands.show_change('the artist', 'the album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        self.items[0].title = ''
+        msg = self._show_change()
         self.assertTrue('file.mp3 -> the title' in msg)
 
     def test_item_data_change_title_missing_with_unicode_filename(self):
-        items, info = self._items_and_info()
-        items[0].title = ''
-        items[0].path = u'/path/to/caf\xe9.mp3'.encode('utf8')
-        commands.show_change('the artist', 'the album',
-                             items, info, 0.1, color=False)
-        msg = self.io.getoutput().lower()
+        self.items[0].title = ''
+        self.items[0].path = u'/path/to/caf\xe9.mp3'.encode('utf8')
+        msg = self._show_change()
         self.assertTrue(u'caf\xe9.mp3 -> the title' in msg.decode('utf8'))
 
 class DefaultPathTest(unittest.TestCase):
@@ -753,7 +765,9 @@ class PathFormatTest(unittest.TestCase):
         pf = self._paths_for("""
             foo: bar
         """)
-        self.assertEqual(pf[0], ('foo', 'bar'))
+        key, tmpl = pf[0]
+        self.assertEqual(key, 'foo')
+        self.assertEqual(tmpl.original, 'bar')
         self.assertEqual(pf[1:], ui.DEFAULT_PATH_FORMATS)
 
 def suite():
